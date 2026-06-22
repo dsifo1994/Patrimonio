@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema de Patrimonio</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.3/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,6 +16,7 @@
     --gold-l:  #f0d48a;
     --bg:      #f4f6fa;
     --surface: #ffffff;
+    --surface-2: #f8fafc;
     --border:  #d8dee8;
     --text:    #1e2535;
     --muted:   #64748b;
@@ -28,9 +29,31 @@
     --radius:  6px;
     --shadow:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
     --shadow-md: 0 4px 12px rgba(0,0,0,.12);
+    --sidebar-w: 230px;
+    --sidebar-w-collapsed: 64px;
   }
 
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  [data-theme="dark"] {
+    --navy:    #2a4a8a;
+    --navy-d:  #0a1428;
+    --navy-l:  #3a5fa8;
+    --bg:      #11151f;
+    --surface: #1a2030;
+    --surface-2: #212838;
+    --border:  #2c3447;
+    --text:    #e5e9f2;
+    --muted:   #8a93a8;
+    --cargo:   #34d399;
+    --cargo-bg:#0f2e22;
+    --desc:    #f0a93f;
+    --desc-bg: #332108;
+    --danger:  #ef5b4d;
+    --danger-l:#341715;
+    --shadow:  0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.5);
+  }
+
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; transition: background .2s, color .2s; }
 
   /* ── LOGIN SCREEN ── */
   #login-screen {
@@ -48,6 +71,7 @@
     display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;
   }
   .login-logo h1 { font-size: 18px; font-weight: 700; color: var(--navy-d); }
+  [data-theme="dark"] .login-logo h1 { color: var(--text); }
   .login-logo p { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .login-badge {
     background: var(--navy-d); color: var(--gold-l); font-size: 10px; font-weight: 700;
@@ -55,33 +79,81 @@
     display: inline-block; margin-bottom: 8px;
   }
   #login-error { background: var(--danger-l); border: 1px solid #f5c6c2; color: var(--danger); padding: 10px 12px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; display: none; }
+  [data-theme="dark"] #login-error { border-color: #5a2c27; }
 
   /* ── APP SHELL ── */
-  #app-screen { display: none; min-height: 100vh; flex-direction: column; }
+  #app-screen { display: none; min-height: 100vh; }
   .topbar-strip { background: var(--navy-d); color: var(--gold-l); font-size: 11px; text-align: center; padding: 4px; letter-spacing: .04em; }
+
   .navbar {
-    background: var(--navy); padding: 0 24px; display: flex; align-items: center;
+    background: var(--navy); padding: 0 16px; display: flex; align-items: center;
     justify-content: space-between; height: 54px; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    position: sticky; top: 0; z-index: 40;
   }
+  .navbar-left { display: flex; align-items: center; gap: 12px; }
   .navbar-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 600; font-size: 15px; }
-  .navbar-brand svg { color: var(--gold); }
-  .navbar-user { display: flex; align-items: center; gap: 12px; }
+  .navbar-brand svg { color: var(--gold); flex-shrink: 0; }
+  .navbar-user { display: flex; align-items: center; gap: 10px; }
   .navbar-email { color: rgba(255,255,255,.65); font-size: 12px; }
-  .btn-logout { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.85); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; transition: background .15s; }
+  .btn-logout { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.85); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; transition: background .15s; font-family: inherit; }
   .btn-logout:hover { background: rgba(255,255,255,.2); }
 
-  .main { flex: 1; max-width: 960px; width: 100%; margin: 0 auto; padding: 28px 24px; }
+  .icon-btn-nav {
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: white;
+    width: 34px; height: 34px; border-radius: var(--radius); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; transition: background .15s; flex-shrink: 0;
+  }
+  .icon-btn-nav:hover { background: rgba(255,255,255,.2); }
+
+  /* ── HAMBURGER ── */
+  .hamburger { display: none; }
+
+  /* ── LAYOUT: SIDEBAR + CONTENT ── */
+  .shell { display: flex; min-height: calc(100vh - 54px - 22px); }
+
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+    transition: width .2s ease; overflow: hidden; position: sticky; top: 54px; height: calc(100vh - 54px);
+    display: flex; flex-direction: column;
+  }
+  .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+  .sidebar-nav { padding: 14px 10px; flex: 1; overflow-y: auto; }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius);
+    color: var(--muted); font-size: 13.5px; font-weight: 500; cursor: pointer; margin-bottom: 2px;
+    white-space: nowrap; transition: background .15s, color .15s; border: none; background: none; width: 100%; text-align: left; font-family: inherit;
+  }
+  .sidebar-link svg { flex-shrink: 0; width: 18px; height: 18px; }
+  .sidebar-link:hover { background: var(--bg); color: var(--text); }
+  .sidebar-link.active { background: var(--navy); color: white; }
+  .sidebar.collapsed .sidebar-link span { display: none; }
+  .sidebar.collapsed .sidebar-link { justify-content: center; padding: 10px; }
+  .sidebar-footer { padding: 10px; border-top: 1px solid var(--border); }
+  .sidebar-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    background: none; border: 1px solid var(--border); color: var(--muted); border-radius: var(--radius);
+    padding: 8px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s;
+  }
+  .sidebar-toggle:hover { background: var(--bg); color: var(--text); }
+  .sidebar.collapsed .sidebar-toggle span { display: none; }
+
+  .sidebar-overlay { display: none; }
+
+  .content-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .main { flex: 1; width: 100%; padding: 24px; max-width: 1280px; margin: 0 auto; }
 
   /* ── PAGE HEADER ── */
-  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
   .page-header h2 { font-size: 20px; font-weight: 700; color: var(--navy-d); }
+  [data-theme="dark"] .page-header h2 { color: var(--text); }
   .page-header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-  .breadcrumb button { background: none; border: none; color: var(--navy); cursor: pointer; font-size: 13px; padding: 0; display: flex; align-items: center; gap: 4px; }
+  .breadcrumb button { background: none; border: none; color: var(--navy-l); cursor: pointer; font-size: 13px; padding: 0; display: flex; align-items: center; gap: 4px; font-family: inherit; }
+  [data-theme="dark"] .breadcrumb button { color: var(--gold-l); }
   .breadcrumb button:hover { text-decoration: underline; }
 
   /* ── BUTTONS ── */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; font-family: inherit; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; font-family: inherit; white-space: nowrap; }
   .btn-primary { background: var(--navy); color: white; }
   .btn-primary:hover { background: var(--navy-l); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -97,27 +169,23 @@
   /* ── FORM ── */
   .form-group { margin-bottom: 16px; }
   .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
-  .form-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; color: var(--text); outline: none; font-family: inherit; transition: border-color .15s; background: white; }
+  .form-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; color: var(--text); outline: none; font-family: inherit; transition: border-color .15s; background: var(--surface); }
   .form-input:focus { border-color: var(--navy); }
   textarea.form-input { resize: vertical; min-height: 80px; }
   .form-error { background: var(--danger-l); border: 1px solid #f5c6c2; color: var(--danger); padding: 10px 12px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; display: none; }
+  [data-theme="dark"] .form-error { border-color: #5a2c27; }
   .radio-group { display: flex; gap: 16px; }
   .radio-opt { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 14px; }
   .radio-opt input { accent-color: var(--navy); width: 15px; height: 15px; }
 
-  /* ── CARDS & LISTS ── */
+  /* ── SEARCH INPUT ── */
+  .search-wrap { position: relative; flex: 1; max-width: 360px; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search-input { width: 100%; padding: 8px 12px 8px 34px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+  .search-input:focus { border-color: var(--navy); }
+
+  /* ── CARDS & LISTS (kept for misc empty/loading states) ── */
   .card-list { display: flex; flex-direction: column; gap: 10px; }
-  .item-card {
-    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
-    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
-    box-shadow: var(--shadow); transition: border-color .15s;
-  }
-  .item-card:hover { border-color: var(--navy-l); }
-  .item-body { flex: 1; min-width: 0; }
-  .item-name { font-weight: 600; color: var(--navy-d); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-desc { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-date { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-  .item-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
   /* ── BADGE TIPO ── */
   .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
@@ -125,32 +193,98 @@
   .badge-descargo { background: var(--desc-bg); color: var(--desc); }
 
   /* ── DOC ICON ── */
-  .doc-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .doc-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .doc-icon-pdf { background: #fde8e8; color: #c0392b; }
   .doc-icon-img { background: #e8f0fe; color: #1a56db; }
+  [data-theme="dark"] .doc-icon-pdf { background: #3a1816; }
+  [data-theme="dark"] .doc-icon-img { background: #131f33; }
 
   /* ── FILTERS ── */
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-  .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: white; color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; font-family: inherit; }
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; font-family: inherit; }
   .filter-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
 
+  /* ── TOOLBAR (above tables) ── */
+  .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .table-scroll { overflow-x: auto; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data-table th, table.data-table td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.data-table td.wrap { white-space: normal; }
+  table.data-table thead th {
+    background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; user-select: none; position: sticky; top: 0;
+  }
+  table.data-table thead th.sortable { cursor: pointer; }
+  table.data-table thead th.sortable:hover { color: var(--text); }
+  .sort-arrow { display: inline-block; margin-left: 4px; opacity: .4; font-size: 10px; }
+  .sort-arrow.active { opacity: 1; color: var(--navy-l); }
+  table.data-table tbody tr { transition: background .1s; }
+  table.data-table tbody tr:hover { background: var(--surface-2); }
+  table.data-table tbody tr:last-child td { border-bottom: none; }
+  .cell-name { font-weight: 600; color: var(--navy-d); }
+  [data-theme="dark"] .cell-name { color: var(--text); }
+  .cell-muted { color: var(--muted); font-size: 12px; }
+  .cell-actions { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
+  .th-content { display: flex; align-items: center; }
+
+  /* ── PAGINATION ── */
+  .pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; gap: 10px; }
+  .pagination-info { font-size: 12px; color: var(--muted); }
+  .pagination-controls { display: flex; align-items: center; gap: 4px; }
+  .page-btn {
+    min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--bg); border-color: var(--navy-l); }
+  .page-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .page-size-select { border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 8px; font-size: 12px; background: var(--surface); color: var(--text); font-family: inherit; }
+
+  /* ── DASHBOARD ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; box-shadow: var(--shadow); }
+  .stat-card .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--navy-d); line-height: 1; }
+  [data-theme="dark"] .stat-value { color: var(--text); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dash-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 18px; }
+  .dash-section h3 { font-size: 14px; font-weight: 700; color: var(--navy-d); margin-bottom: 14px; }
+  [data-theme="dark"] .dash-section h3 { color: var(--text); }
+  .dash-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .bar-label { width: 110px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .bar-track { flex: 1; height: 10px; background: var(--bg); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width .4s ease; }
+  .bar-value { width: 36px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text); flex-shrink: 0; }
+  .recent-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .recent-row:last-child { border-bottom: none; }
+  .recent-text { flex: 1; min-width: 0; }
+  .recent-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recent-sub { font-size: 11.5px; color: var(--muted); }
+
   /* ── EMPTY ── */
-  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
   .empty svg { color: #cbd5e1; margin-bottom: 12px; }
   .empty p { font-size: 14px; }
   .empty small { font-size: 12px; color: #94a3b8; }
 
   /* ── MODAL ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .modal-box { background: white; border-radius: 10px; width: 100%; max-width: 480px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md); }
+  .modal-box { background: var(--surface); border-radius: 10px; width: 100%; max-width: 480px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md); }
   .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
   .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--navy-d); }
+  [data-theme="dark"] .modal-header h3 { color: var(--text); }
   .modal-body { padding: 22px; overflow-y: auto; flex: 1; }
-  .modal-footer { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .modal-footer { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 
   /* ── CONFIRM ── */
   .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .confirm-box { background: white; border-radius: 10px; width: 100%; max-width: 380px; padding: 28px; box-shadow: var(--shadow-md); }
+  .confirm-box { background: var(--surface); border-radius: 10px; width: 100%; max-width: 380px; padding: 28px; box-shadow: var(--shadow-md); }
   .confirm-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
   .confirm-box p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
   .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
@@ -163,16 +297,56 @@
   /* ── LOADING ── */
   .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
 
-  footer { background: white; border-top: 1px solid var(--border); padding: 12px; text-align: center; font-size: 11px; color: #94a3b8; }
+  footer { background: var(--surface); border-top: 1px solid var(--border); padding: 12px; text-align: center; font-size: 11px; color: #94a3b8; }
 
   /* ── FILE INPUT ── */
   .file-input-wrap { border: 2px dashed var(--border); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: border-color .15s; }
   .file-input-wrap:hover { border-color: var(--navy); }
   .file-input-wrap input { display: none; }
   .file-input-wrap p { font-size: 13px; color: var(--muted); }
-  .file-input-wrap .filename { font-size: 12px; color: var(--navy); font-weight: 600; margin-top: 6px; }
+  .file-input-wrap .filename { font-size: 12px; color: var(--navy-l); font-weight: 600; margin-top: 6px; }
 
   .hidden { display: none !important; }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE
+  ══════════════════════════════════════════ */
+  @media (max-width: 980px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .dash-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 880px) {
+    .hamburger { display: inline-flex; }
+    .navbar-email { display: none; }
+
+    .sidebar {
+      position: fixed; left: 0; top: 0; height: 100vh; z-index: 60;
+      transform: translateX(-100%); width: 240px !important; box-shadow: var(--shadow-md);
+      transition: transform .2s ease;
+    }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .sidebar.collapsed .sidebar-link span { display: inline; }
+    .sidebar.collapsed { width: 240px; }
+    .sidebar-toggle { display: none; }
+    .sidebar-overlay.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55; }
+
+    .main { padding: 16px; }
+    .page-header { flex-direction: column; }
+    .page-header .btn { width: 100%; justify-content: center; }
+    .table-toolbar { flex-direction: column; align-items: stretch; }
+    .search-wrap { max-width: none; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .pagination { flex-direction: column; align-items: stretch; text-align: center; }
+    .pagination-controls { justify-content: center; }
+  }
+
+  @media (max-width: 560px) {
+    .login-card { padding: 28px 22px; }
+    .modal-box { max-width: 100%; }
+    .topbar-strip { font-size: 10px; }
+    table.data-table th, table.data-table td { padding: 9px 10px; }
+  }
 </style>
 </head>
 <body>
@@ -216,23 +390,74 @@
 <div id="app-screen">
   <div class="topbar-strip">Sistema de Gestión Documental — Área de Patrimonio</div>
   <nav class="navbar">
-    <div class="navbar-brand">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
-      </svg>
-      Patrimonio
+    <div class="navbar-left">
+      <button class="icon-btn-nav hamburger" id="hamburger-btn" onclick="toggleMobileSidebar()" title="Menú">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/>
+        </svg>
+      </button>
+      <div class="navbar-brand">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
+        </svg>
+        Patrimonio
+      </div>
     </div>
     <div class="navbar-user">
+      <button class="icon-btn-nav" id="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar tema">
+        <svg id="theme-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"></svg>
+      </button>
       <span class="navbar-email" id="nav-email"></span>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </nav>
 
-  <div class="main" id="main-content">
-    <!-- Contenido dinámico aquí -->
-  </div>
+  <div class="shell">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <button class="sidebar-link" data-route="dashboard" onclick="navigateTo('dashboard')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75A3 3 0 016.75 3.75h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6.75a3 3 0 01-3-3V6.75zM3.75 17.25a3 3 0 013-3h2.25a3 3 0 013 3v.001a3 3 0 01-3 3H6.75a3 3 0 01-3-3v-.001zM13.5 6.75a3 3 0 013-3h.75a3 3 0 013 3v9.75a3 3 0 01-3 3h-.75a3 3 0 01-3-3V6.75z"/>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="sidebar-link" data-route="estructuras" onclick="navigateTo('estructuras')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m6-6h.75m-.75 3h.75m-.75 3h.75M6 21V9.75a.75.75 0 01.75-.75h.008c.414 0 .75.336.75.75V21m9-11.25v11.25"/>
+          </svg>
+          <span>Estructuras</span>
+        </button>
+        <button class="sidebar-link" data-route="documentos" onclick="navigateTo('documentos')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+          </svg>
+          <span>Documentos</span>
+        </button>
+        <button class="sidebar-link" data-route="buscador" onclick="navigateTo('buscador')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <span>Buscador</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebarCollapse()">
+          <svg id="sidebar-toggle-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
+          </svg>
+          <span>Colapsar</span>
+        </button>
+      </div>
+    </aside>
 
-  <footer>Sistema de Patrimonio — Área de Gestión Documental</footer>
+    <div class="content-area">
+      <div class="main" id="main-content">
+        <!-- Contenido dinámico aquí -->
+      </div>
+      <footer>Sistema de Patrimonio — Área de Gestión Documental</footer>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -284,6 +509,86 @@ let currentUser = null
 let currentEstructura = null
 let confirmCallback = null
 let selectedFile = null
+let currentRoute = 'dashboard'
+
+// Estado de tablas: paginación + orden + búsqueda local, por contexto
+const tableState = {
+  estructuras: { page: 1, pageSize: 10, sortKey: 'created_at', sortDir: 'desc', search: '' },
+  documentos:  { page: 1, pageSize: 10, sortKey: 'created_at', sortDir: 'desc', search: '', filtro: 'Todos' }
+}
+
+// ══════════════════════════════════════════
+// TEMA (CLARO / OSCURO)
+// ══════════════════════════════════════════
+const ICON_SUN  = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/>'
+const ICON_MOON = '<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 008.997-5.998z"/>'
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme)
+  document.getElementById('theme-icon').innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON
+  try { localStorage.setItem('patrimonio-theme', theme) } catch(e) {}
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+  applyTheme(current === 'dark' ? 'light' : 'dark')
+}
+
+function initTheme() {
+  let saved = null
+  try { saved = localStorage.getItem('patrimonio-theme') } catch(e) {}
+  if (!saved) {
+    saved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  applyTheme(saved)
+}
+
+// ══════════════════════════════════════════
+// SIDEBAR (colapsable + mobile)
+// ══════════════════════════════════════════
+function toggleSidebarCollapse() {
+  const sidebar = document.getElementById('sidebar')
+  const collapsed = sidebar.classList.toggle('collapsed')
+  document.getElementById('sidebar-toggle-icon').innerHTML = collapsed
+    ? '<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>'
+    : '<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>'
+  try { localStorage.setItem('patrimonio-sidebar-collapsed', collapsed ? '1' : '0') } catch(e) {}
+}
+
+function initSidebarState() {
+  let collapsed = false
+  try { collapsed = localStorage.getItem('patrimonio-sidebar-collapsed') === '1' } catch(e) {}
+  if (collapsed) {
+    document.getElementById('sidebar').classList.add('collapsed')
+    document.getElementById('sidebar-toggle-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>'
+  }
+}
+
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('mobile-open')
+  document.getElementById('sidebar-overlay').classList.toggle('show')
+}
+
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open')
+  document.getElementById('sidebar-overlay').classList.remove('show')
+}
+
+function setActiveSidebarLink(route) {
+  document.querySelectorAll('.sidebar-link').forEach(el => {
+    el.classList.toggle('active', el.dataset.route === route)
+  })
+}
+
+function navigateTo(route) {
+  currentRoute = route
+  setActiveSidebarLink(route)
+  closeMobileSidebar()
+  if (route === 'dashboard') renderDashboard()
+  else if (route === 'estructuras') renderEstructuras()
+  else if (route === 'documentos') renderTodosDocumentos()
+  else if (route === 'buscador') renderBuscador()
+}
 
 // ══════════════════════════════════════════
 // AUTH
@@ -308,9 +613,9 @@ async function doLogin() {
 
   currentUser = data.user
   document.getElementById('nav-email').textContent = currentUser.email
-  document.getElementById('app-screen').style.display = 'flex'
+  document.getElementById('app-screen').style.display = 'block'
   document.getElementById('login-screen').classList.add('hidden')
-  renderEstructuras()
+  navigateTo('dashboard')
 }
 
 function showLoginError(msg) {
@@ -373,52 +678,274 @@ function fmtDate(iso) {
 }
 
 // ══════════════════════════════════════════
-// ESTRUCTURAS
+// HELPERS DE TABLA: orden, paginación, búsqueda
 // ══════════════════════════════════════════
+function sortRows(rows, key, dir) {
+  const sorted = [...rows].sort((a, b) => {
+    let va = a[key], vb = b[key]
+    if (va == null) va = ''
+    if (vb == null) vb = ''
+    if (typeof va === 'string') va = va.toLowerCase()
+    if (typeof vb === 'string') vb = vb.toLowerCase()
+    if (va < vb) return -1
+    if (va > vb) return 1
+    return 0
+  })
+  if (dir === 'desc') sorted.reverse()
+  return sorted
+}
+
+function paginate(rows, page, pageSize) {
+  const total = rows.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const start = (safePage - 1) * pageSize
+  const pageRows = rows.slice(start, start + pageSize)
+  return { pageRows, total, totalPages, safePage, start }
+}
+
+function renderSortArrow(state, key) {
+  if (state.sortKey !== key) return '<span class="sort-arrow">▲</span>'
+  return `<span class="sort-arrow active">${state.sortDir === 'asc' ? '▲' : '▼'}</span>`
+}
+
+function renderPagination(opts) {
+  // opts: { total, totalPages, safePage, start, pageRowsLength, pageSize, onPage(name), onSize(name) }
+  const { total, totalPages, safePage, start, pageRowsLength, pageSize, onPageFn, onSizeFn } = opts
+  if (total === 0) return ''
+
+  const from = total === 0 ? 0 : start + 1
+  const to = start + pageRowsLength
+
+  let pageBtns = ''
+  const maxBtns = 5
+  let startPage = Math.max(1, safePage - 2)
+  let endPage = Math.min(totalPages, startPage + maxBtns - 1)
+  startPage = Math.max(1, endPage - maxBtns + 1)
+
+  pageBtns += `<button class="page-btn" ${safePage===1?'disabled':''} onclick="${onPageFn}(1)" title="Primera">«</button>`
+  pageBtns += `<button class="page-btn" ${safePage===1?'disabled':''} onclick="${onPageFn}(${safePage-1})" title="Anterior">‹</button>`
+  for (let p = startPage; p <= endPage; p++) {
+    pageBtns += `<button class="page-btn ${p===safePage?'active':''}" onclick="${onPageFn}(${p})">${p}</button>`
+  }
+  pageBtns += `<button class="page-btn" ${safePage===totalPages?'disabled':''} onclick="${onPageFn}(${safePage+1})" title="Siguiente">›</button>`
+  pageBtns += `<button class="page-btn" ${safePage===totalPages?'disabled':''} onclick="${onPageFn}(${totalPages})" title="Última">»</button>`
+
+  return `
+    <div class="pagination">
+      <div class="pagination-info">Mostrando ${from}–${to} de ${total}</div>
+      <div class="pagination-controls">
+        <select class="page-size-select" onchange="${onSizeFn}(this.value)">
+          ${[10,25,50,100].map(n => `<option value="${n}" ${n===pageSize?'selected':''}>${n} por página</option>`).join('')}
+        </select>
+        ${pageBtns}
+      </div>
+    </div>`
+}
+
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+async function renderDashboard() {
+  setMain('<div class="loading">Cargando dashboard...</div>')
+
+  const [{ data: estructuras, error: errE }, { data: documentos, error: errD }] = await Promise.all([
+    sb.from('estructuras').select('*'),
+    sb.from('documentos').select('*, estructuras(nombre)').order('created_at', { ascending: false })
+  ])
+
+  if (errE || errD) {
+    setMain(`<div class="empty"><p>Error al cargar el dashboard: ${esc((errE||errD).message)}</p></div>`)
+    return
+  }
+
+  const totalEstructuras = estructuras.length
+  const totalDocumentos = documentos.length
+  const nCargo = documentos.filter(d => d.tipo === 'Cargo').length
+  const nDescargo = documentos.filter(d => d.tipo === 'Descargo').length
+  const pctCargo = totalDocumentos ? Math.round((nCargo / totalDocumentos) * 100) : 0
+  const pctDescargo = totalDocumentos ? Math.round((nDescargo / totalDocumentos) * 100) : 0
+
+  const countByEstructura = {}
+  documentos.forEach(d => { countByEstructura[d.estructura_id] = (countByEstructura[d.estructura_id] || 0) + 1 })
+  const topEstructuras = estructuras
+    .map(e => ({ ...e, count: countByEstructura[e.id] || 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+  const maxCount = Math.max(1, ...topEstructuras.map(e => e.count))
+
+  const recientes = documentos.slice(0, 6)
+
+  setMain(`
+    <div class="page-header">
+      <div>
+        <h2>Dashboard</h2>
+        <p>Resumen general del sistema</p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-top">
+          <div class="stat-icon" style="background:var(--cargo-bg);color:var(--navy-l);">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m6-6h.75m-.75 3h.75m-.75 3h.75M6 21V9.75a.75.75 0 01.75-.75h.008c.414 0 .75.336.75.75V21m9-11.25v11.25"/></svg>
+          </div>
+        </div>
+        <div class="stat-value">${totalEstructuras}</div>
+        <div class="stat-label">Estructuras registradas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top">
+          <div class="stat-icon" style="background:#e8f0fe;color:#1a56db;">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value">${totalDocumentos}</div>
+        <div class="stat-label">Documentos totales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top">
+          <div class="stat-icon" style="background:var(--cargo-bg);color:var(--cargo);">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value">${nCargo}</div>
+        <div class="stat-label">Documentos de Cargo (${pctCargo}%)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top">
+          <div class="stat-icon" style="background:var(--desc-bg);color:var(--desc);">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value">${nDescargo}</div>
+        <div class="stat-label">Documentos de Descargo (${pctDescargo}%)</div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="dash-section">
+        <h3>Estructuras con más documentos</h3>
+        ${topEstructuras.length === 0 ? '<p style="font-size:13px;color:var(--muted);">Sin datos todavía.</p>' : topEstructuras.map(e => `
+          <div class="bar-row">
+            <div class="bar-label" title="${esc(e.nombre)}">${esc(e.nombre)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(e.count/maxCount*100)}%;background:var(--navy-l);"></div></div>
+            <div class="bar-value">${e.count}</div>
+          </div>
+        `).join('')}
+        <div style="margin-top:10px;">
+          <div class="bar-row" style="margin-bottom:0;">
+            <div class="bar-label">Cargo</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pctCargo}%;background:var(--cargo);"></div></div>
+            <div class="bar-value">${pctCargo}%</div>
+          </div>
+          <div class="bar-row" style="margin-bottom:0;margin-top:8px;">
+            <div class="bar-label">Descargo</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pctDescargo}%;background:var(--desc);"></div></div>
+            <div class="bar-value">${pctDescargo}%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <h3>Últimos documentos subidos</h3>
+        ${recientes.length === 0 ? '<p style="font-size:13px;color:var(--muted);">Todavía no se subieron documentos.</p>' : recientes.map(d => `
+          <div class="recent-row">
+            <span class="badge ${d.tipo === 'Cargo' ? 'badge-cargo' : 'badge-descargo'}">${d.tipo}</span>
+            <div class="recent-text">
+              <div class="recent-name">${esc(d.descripcion || 'Sin descripción')}</div>
+              <div class="recent-sub">${esc(d.estructuras ? d.estructuras.nombre : '')} · ${fmtDate(d.created_at)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `)
+}
+
+// ══════════════════════════════════════════
+// ESTRUCTURAS (tabla con orden, paginación y búsqueda)
+// ══════════════════════════════════════════
+let estructurasCache = []
+
 async function renderEstructuras() {
-  currentEstructura = null
   setMain('<div class="loading">Cargando estructuras...</div>')
 
-  const { data, error } = await sb.from('estructuras').select('*').order('created_at', { ascending: false })
+  const { data, error } = await sb.from('estructuras').select('*')
 
-  if (error) { setMain('<div class="empty"><p>Error al cargar: ' + error.message + '</p></div>'); return }
+  if (error) { setMain('<div class="empty"><p>Error al cargar: ' + esc(error.message) + '</p></div>'); return }
 
-  const listHtml = data.length === 0
+  estructurasCache = data
+  drawEstructurasTable()
+}
+
+function drawEstructurasTable() {
+  const st = tableState.estructuras
+  let rows = estructurasCache
+
+  if (st.search.trim()) {
+    const q = st.search.trim().toLowerCase()
+    rows = rows.filter(e => (e.nombre || '').toLowerCase().includes(q) || (e.descripcion || '').toLowerCase().includes(q))
+  }
+
+  rows = sortRows(rows, st.sortKey, st.sortDir)
+
+  const { pageRows, total, totalPages, safePage, start } = paginate(rows, st.page, st.pageSize)
+  st.page = safePage
+
+  const tableHtml = total === 0
     ? `<div class="empty">
         <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
         </svg>
-        <p>No hay estructuras registradas</p>
-        <small>Creá la primera para comenzar a gestionar documentos</small>
-        <br><br>
-        <button class="btn btn-primary" onclick="openModalEstructura()">Crear estructura</button>
+        <p>${st.search ? 'No se encontraron estructuras' : 'No hay estructuras registradas'}</p>
+        <small>${st.search ? 'Probá con otro término de búsqueda' : 'Creá la primera para comenzar a gestionar documentos'}</small>
+        ${!st.search ? '<br><br><button class="btn btn-primary" onclick="openModalEstructura()">Crear estructura</button>' : ''}
       </div>`
-    : `<div class="card-list">${data.map(e => `
-        <div class="item-card">
-          <div class="item-body">
-            <div class="item-name">${esc(e.nombre)}</div>
-            ${e.descripcion ? `<div class="item-desc">${esc(e.descripcion)}</div>` : ''}
-            <div class="item-date">${fmtDate(e.created_at)}</div>
-          </div>
-          <div class="item-actions">
-            <button class="btn btn-secondary btn-sm" onclick='verDocumentos(${JSON.stringify(e)})'>
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              Documentos
-            </button>
-            <button class="btn-icon" title="Editar" onclick='openModalEstructura(${JSON.stringify(e)})'>
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-            </button>
-            <button class="btn-icon danger" title="Eliminar" onclick="confirmarEliminarEstructura('${e.id}','${esc(e.nombre)}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
-        </div>`).join('')}
+    : `<div class="table-wrap">
+        <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortEstructuras('nombre')"><span class="th-content">Nombre ${renderSortArrow(st,'nombre')}</span></th>
+              <th class="sortable" onclick="sortEstructuras('descripcion')"><span class="th-content">Descripción ${renderSortArrow(st,'descripcion')}</span></th>
+              <th class="sortable" onclick="sortEstructuras('created_at')"><span class="th-content">Creada ${renderSortArrow(st,'created_at')}</span></th>
+              <th style="text-align:right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageRows.map(e => `
+              <tr>
+                <td class="cell-name">${esc(e.nombre)}</td>
+                <td class="wrap cell-muted">${esc(e.descripcion || '—')}</td>
+                <td class="cell-muted">${fmtDate(e.created_at)}</td>
+                <td>
+                  <div class="cell-actions">
+                    <button class="btn btn-secondary btn-sm" onclick='verDocumentos(${JSON.stringify(e)})'>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                      </svg>
+                      Documentos
+                    </button>
+                    <button class="btn-icon" title="Editar" onclick='openModalEstructura(${JSON.stringify(e)})'>
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                    </button>
+                    <button class="btn-icon danger" title="Eliminar" onclick="confirmarEliminarEstructura('${e.id}','${esc(e.nombre)}')">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        </div>
+        ${renderPagination({ total, totalPages, safePage, start, pageRowsLength: pageRows.length, pageSize: st.pageSize, onPageFn: 'goToPageEstructuras', onSizeFn: 'setPageSizeEstructuras' })}
       </div>`
 
   setMain(`
@@ -434,8 +961,34 @@ async function renderEstructuras() {
         Nueva estructura
       </button>
     </div>
-    ${listHtml}
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input class="search-input" placeholder="Buscar por nombre o descripción..." value="${esc(st.search)}" oninput="searchEstructuras(this.value)">
+      </div>
+    </div>
+    ${tableHtml}
   `)
+}
+
+function sortEstructuras(key) {
+  const st = tableState.estructuras
+  if (st.sortKey === key) st.sortDir = st.sortDir === 'asc' ? 'desc' : 'asc'
+  else { st.sortKey = key; st.sortDir = 'asc' }
+  drawEstructurasTable()
+}
+
+function goToPageEstructuras(p) { tableState.estructuras.page = p; drawEstructurasTable() }
+function setPageSizeEstructuras(n) { tableState.estructuras.pageSize = parseInt(n, 10); tableState.estructuras.page = 1; drawEstructurasTable() }
+
+let estructurasSearchDebounce = null
+function searchEstructuras(value) {
+  clearTimeout(estructurasSearchDebounce)
+  estructurasSearchDebounce = setTimeout(() => {
+    tableState.estructuras.search = value
+    tableState.estructuras.page = 1
+    drawEstructurasTable()
+  }, 200)
 }
 
 function openModalEstructura(e = null) {
@@ -496,68 +1049,110 @@ async function confirmarEliminarEstructura(id, nombre) {
 }
 
 // ══════════════════════════════════════════
-// DOCUMENTOS
+// DOCUMENTOS (de una estructura específica)
 // ══════════════════════════════════════════
+let documentosCache = []
+
 function verDocumentos(estructura) {
   currentEstructura = estructura
-  renderDocumentos('Todos')
+  tableState.documentos.page = 1
+  tableState.documentos.search = ''
+  tableState.documentos.filtro = 'Todos'
+  renderDocumentos()
 }
 
-async function renderDocumentos(filtro = 'Todos') {
+function docIcon(doc) {
+  const isPdf = doc.archivo_url.toLowerCase().includes('.pdf')
+  return {
+    cls: isPdf ? 'doc-icon-pdf' : 'doc-icon-img',
+    svg: isPdf
+      ? `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`
+      : `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`
+  }
+}
+
+async function renderDocumentos() {
   const e = currentEstructura
   setMain('<div class="loading">Cargando documentos...</div>')
 
-  let query = sb.from('documentos').select('*').eq('estructura_id', e.id).order('created_at', { ascending: false })
-  if (filtro !== 'Todos') query = query.eq('tipo', filtro)
+  const { data, error } = await sb.from('documentos').select('*').eq('estructura_id', e.id)
 
-  const { data, error } = await query
+  if (error) { setMain('<div class="empty"><p>Error: ' + esc(error.message) + '</p></div>'); return }
 
-  if (error) { setMain('<div class="empty"><p>Error: ' + error.message + '</p></div>'); return }
+  documentosCache = data
+  drawDocumentosTable()
+}
 
-  // Conteos para badges
-  const { data: counts } = await sb.from('documentos').select('tipo').eq('estructura_id', e.id)
-  const nCargo    = counts ? counts.filter(d => d.tipo === 'Cargo').length : 0
-  const nDescargo = counts ? counts.filter(d => d.tipo === 'Descargo').length : 0
+function drawDocumentosTable() {
+  const e = currentEstructura
+  const st = tableState.documentos
+  let rows = documentosCache
 
-  const listHtml = data.length === 0
+  const nCargo = rows.filter(d => d.tipo === 'Cargo').length
+  const nDescargo = rows.filter(d => d.tipo === 'Descargo').length
+
+  if (st.filtro !== 'Todos') rows = rows.filter(d => d.tipo === st.filtro)
+
+  if (st.search.trim()) {
+    const q = st.search.trim().toLowerCase()
+    rows = rows.filter(d => (d.descripcion || '').toLowerCase().includes(q) || d.tipo.toLowerCase().includes(q))
+  }
+
+  rows = sortRows(rows, st.sortKey, st.sortDir)
+
+  const { pageRows, total, totalPages, safePage, start } = paginate(rows, st.page, st.pageSize)
+  st.page = safePage
+
+  const tableHtml = total === 0
     ? `<div class="empty">
         <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
-        <p>${filtro === 'Todos' ? 'No hay documentos cargados' : 'No hay documentos de tipo ' + filtro}</p>
-        ${filtro === 'Todos' ? '<small>Subí el primer documento para comenzar</small>' : ''}
+        <p>${st.search ? 'No se encontraron documentos' : (st.filtro === 'Todos' ? 'No hay documentos cargados' : 'No hay documentos de tipo ' + st.filtro)}</p>
+        ${(!st.search && st.filtro === 'Todos') ? '<small>Subí el primer documento para comenzar</small>' : ''}
       </div>`
-    : `<div class="card-list">${data.map(doc => {
-        const isPdf = doc.archivo_url.toLowerCase().includes('.pdf')
-        const iconCls = isPdf ? 'doc-icon-pdf' : 'doc-icon-img'
-        const iconSvg = isPdf
-          ? `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`
-          : `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`
-        return `
-        <div class="item-card">
-          <div class="doc-icon ${iconCls}">${iconSvg}</div>
-          <div class="item-body">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-              <span class="badge ${doc.tipo === 'Cargo' ? 'badge-cargo' : 'badge-descargo'}">${doc.tipo}</span>
-            </div>
-            ${doc.descripcion ? `<div class="item-name">${esc(doc.descripcion)}</div>` : '<div class="item-desc">Sin descripción</div>'}
-            <div class="item-date">${fmtDate(doc.created_at)}</div>
-          </div>
-          <div class="item-actions">
-            <a href="${doc.archivo_url}" target="_blank" class="btn-icon" title="Ver / Descargar">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </a>
-            <button class="btn-icon danger" title="Eliminar" onclick="confirmarEliminarDoc('${doc.id}','${esc(doc.archivo_url)}')">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
-        </div>`
-      }).join('')}
-    </div>`
+    : `<div class="table-wrap">
+        <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortDocumentos('tipo')"><span class="th-content">Tipo ${renderSortArrow(st,'tipo')}</span></th>
+              <th>Archivo</th>
+              <th class="sortable" onclick="sortDocumentos('descripcion')"><span class="th-content">Descripción ${renderSortArrow(st,'descripcion')}</span></th>
+              <th class="sortable" onclick="sortDocumentos('created_at')"><span class="th-content">Subido ${renderSortArrow(st,'created_at')}</span></th>
+              <th style="text-align:right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageRows.map(doc => {
+              const icon = docIcon(doc)
+              return `
+              <tr>
+                <td><span class="badge ${doc.tipo === 'Cargo' ? 'badge-cargo' : 'badge-descargo'}">${doc.tipo}</span></td>
+                <td><div class="doc-icon ${icon.cls}" style="width:28px;height:28px;">${icon.svg}</div></td>
+                <td class="wrap cell-muted">${esc(doc.descripcion || 'Sin descripción')}</td>
+                <td class="cell-muted">${fmtDate(doc.created_at)}</td>
+                <td>
+                  <div class="cell-actions">
+                    <a href="${doc.archivo_url}" target="_blank" class="btn-icon" title="Ver / Descargar">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                      </svg>
+                    </a>
+                    <button class="btn-icon danger" title="Eliminar" onclick="confirmarEliminarDoc('${doc.id}','${esc(doc.archivo_url)}')">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>`
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+        ${renderPagination({ total, totalPages, safePage, start, pageRowsLength: pageRows.length, pageSize: st.pageSize, onPageFn: 'goToPageDocumentos', onSizeFn: 'setPageSizeDocumentos' })}
+      </div>`
 
   setMain(`
     <div class="breadcrumb">
@@ -583,12 +1178,38 @@ async function renderDocumentos(filtro = 'Todos') {
       </button>
     </div>
     <div class="filter-bar">
-      <button class="filter-btn ${filtro==='Todos'?'active':''}" onclick="renderDocumentos('Todos')">Todos (${nCargo+nDescargo})</button>
-      <button class="filter-btn ${filtro==='Cargo'?'active':''}" onclick="renderDocumentos('Cargo')">Cargo (${nCargo})</button>
-      <button class="filter-btn ${filtro==='Descargo'?'active':''}" onclick="renderDocumentos('Descargo')">Descargo (${nDescargo})</button>
+      <button class="filter-btn ${st.filtro==='Todos'?'active':''}" onclick="filtrarDocumentos('Todos')">Todos (${nCargo+nDescargo})</button>
+      <button class="filter-btn ${st.filtro==='Cargo'?'active':''}" onclick="filtrarDocumentos('Cargo')">Cargo (${nCargo})</button>
+      <button class="filter-btn ${st.filtro==='Descargo'?'active':''}" onclick="filtrarDocumentos('Descargo')">Descargo (${nDescargo})</button>
     </div>
-    ${listHtml}
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input class="search-input" placeholder="Buscar por descripción o tipo..." value="${esc(st.search)}" oninput="searchDocumentos(this.value)">
+      </div>
+    </div>
+    ${tableHtml}
   `)
+}
+
+function filtrarDocumentos(filtro) { tableState.documentos.filtro = filtro; tableState.documentos.page = 1; drawDocumentosTable() }
+function sortDocumentos(key) {
+  const st = tableState.documentos
+  if (st.sortKey === key) st.sortDir = st.sortDir === 'asc' ? 'desc' : 'asc'
+  else { st.sortKey = key; st.sortDir = 'asc' }
+  drawDocumentosTable()
+}
+function goToPageDocumentos(p) { tableState.documentos.page = p; drawDocumentosTable() }
+function setPageSizeDocumentos(n) { tableState.documentos.pageSize = parseInt(n, 10); tableState.documentos.page = 1; drawDocumentosTable() }
+
+let documentosSearchDebounce = null
+function searchDocumentos(value) {
+  clearTimeout(documentosSearchDebounce)
+  documentosSearchDebounce = setTimeout(() => {
+    tableState.documentos.search = value
+    tableState.documentos.page = 1
+    drawDocumentosTable()
+  }, 200)
 }
 
 function openModalDoc() {
@@ -653,7 +1274,6 @@ async function subirDocumento() {
   btn.textContent = 'Subiendo...'
   document.getElementById('upload-progress').classList.remove('hidden')
 
-  // Simular progreso
   let prog = 0
   const bar = document.getElementById('progress-bar')
   const interval = setInterval(() => { prog = Math.min(prog + 10, 85); bar.style.width = prog + '%' }, 200)
@@ -692,14 +1312,13 @@ async function subirDocumento() {
 
   closeModal()
   toast('Documento subido correctamente')
-  renderDocumentos('Todos')
+  renderDocumentos()
 }
 
 async function confirmarEliminarDoc(id, url) {
   openConfirm(
     '¿Eliminar este documento? El archivo también se borrará del almacenamiento.',
     async () => {
-      // Extraer ruta del bucket
       const parts = url.split('/documentos/')
       if (parts[1]) {
         await sb.storage.from('documentos').remove([parts[1]])
@@ -707,9 +1326,265 @@ async function confirmarEliminarDoc(id, url) {
       const { error } = await sb.from('documentos').delete().eq('id', id)
       if (error) { toast('Error: ' + error.message, 'error'); return }
       toast('Documento eliminado')
-      renderDocumentos('Todos')
+      renderDocumentos()
     }
   )
+}
+
+// ══════════════════════════════════════════
+// TODOS LOS DOCUMENTOS (vista global desde el sidebar)
+// ══════════════════════════════════════════
+let todosDocumentosCache = []
+const tableStateTodos = { page: 1, pageSize: 10, sortKey: 'created_at', sortDir: 'desc', search: '', filtro: 'Todos' }
+
+async function renderTodosDocumentos() {
+  setMain('<div class="loading">Cargando documentos...</div>')
+
+  const { data, error } = await sb.from('documentos').select('*, estructuras(id, nombre)')
+
+  if (error) { setMain('<div class="empty"><p>Error: ' + esc(error.message) + '</p></div>'); return }
+
+  todosDocumentosCache = data
+  drawTodosDocumentosTable()
+}
+
+function drawTodosDocumentosTable() {
+  const st = tableStateTodos
+  let rows = todosDocumentosCache
+
+  const nCargo = rows.filter(d => d.tipo === 'Cargo').length
+  const nDescargo = rows.filter(d => d.tipo === 'Descargo').length
+
+  if (st.filtro !== 'Todos') rows = rows.filter(d => d.tipo === st.filtro)
+
+  if (st.search.trim()) {
+    const q = st.search.trim().toLowerCase()
+    rows = rows.filter(d =>
+      (d.descripcion || '').toLowerCase().includes(q) ||
+      d.tipo.toLowerCase().includes(q) ||
+      (d.estructuras && d.estructuras.nombre || '').toLowerCase().includes(q)
+    )
+  }
+
+  // Para ordenar por estructura, usamos un campo derivado
+  const rowsForSort = rows.map(d => ({ ...d, _estructura_nombre: d.estructuras ? d.estructuras.nombre : '' }))
+  const sortKey = st.sortKey === 'estructura' ? '_estructura_nombre' : st.sortKey
+  const sorted = sortRows(rowsForSort, sortKey, st.sortDir)
+
+  const { pageRows, total, totalPages, safePage, start } = paginate(sorted, st.page, st.pageSize)
+  st.page = safePage
+
+  const tableHtml = total === 0
+    ? `<div class="empty">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p>${st.search ? 'No se encontraron documentos' : 'No hay documentos cargados todavía'}</p>
+      </div>`
+    : `<div class="table-wrap">
+        <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortTodosDocumentos('tipo')"><span class="th-content">Tipo ${renderSortArrow(st,'tipo')}</span></th>
+              <th class="sortable" onclick="sortTodosDocumentos('estructura')"><span class="th-content">Estructura ${renderSortArrow(st,'estructura')}</span></th>
+              <th>Archivo</th>
+              <th class="sortable" onclick="sortTodosDocumentos('descripcion')"><span class="th-content">Descripción ${renderSortArrow(st,'descripcion')}</span></th>
+              <th class="sortable" onclick="sortTodosDocumentos('created_at')"><span class="th-content">Subido ${renderSortArrow(st,'created_at')}</span></th>
+              <th style="text-align:right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pageRows.map(doc => {
+              const icon = docIcon(doc)
+              return `
+              <tr>
+                <td><span class="badge ${doc.tipo === 'Cargo' ? 'badge-cargo' : 'badge-descargo'}">${doc.tipo}</span></td>
+                <td>${doc.estructuras ? `<button class="btn btn-secondary btn-sm" onclick='verDocumentos(${JSON.stringify(doc.estructuras)})'>${esc(doc.estructuras.nombre)}</button>` : '<span class="cell-muted">—</span>'}</td>
+                <td><div class="doc-icon ${icon.cls}" style="width:28px;height:28px;">${icon.svg}</div></td>
+                <td class="wrap cell-muted">${esc(doc.descripcion || 'Sin descripción')}</td>
+                <td class="cell-muted">${fmtDate(doc.created_at)}</td>
+                <td>
+                  <div class="cell-actions">
+                    <a href="${doc.archivo_url}" target="_blank" class="btn-icon" title="Ver / Descargar">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                      </svg>
+                    </a>
+                    <button class="btn-icon danger" title="Eliminar" onclick="confirmarEliminarDocGlobal('${doc.id}','${esc(doc.archivo_url)}')">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>`
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+        ${renderPagination({ total, totalPages, safePage, start, pageRowsLength: pageRows.length, pageSize: st.pageSize, onPageFn: 'goToPageTodosDocumentos', onSizeFn: 'setPageSizeTodosDocumentos' })}
+      </div>`
+
+  setMain(`
+    <div class="page-header">
+      <div>
+        <h2>Documentos</h2>
+        <p>Todos los documentos cargados en el sistema</p>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn ${st.filtro==='Todos'?'active':''}" onclick="filtrarTodosDocumentos('Todos')">Todos (${nCargo+nDescargo})</button>
+      <button class="filter-btn ${st.filtro==='Cargo'?'active':''}" onclick="filtrarTodosDocumentos('Cargo')">Cargo (${nCargo})</button>
+      <button class="filter-btn ${st.filtro==='Descargo'?'active':''}" onclick="filtrarTodosDocumentos('Descargo')">Descargo (${nDescargo})</button>
+    </div>
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input class="search-input" placeholder="Buscar por descripción, tipo o estructura..." value="${esc(st.search)}" oninput="searchTodosDocumentos(this.value)">
+      </div>
+    </div>
+    ${tableHtml}
+  `)
+}
+
+function filtrarTodosDocumentos(filtro) { tableStateTodos.filtro = filtro; tableStateTodos.page = 1; drawTodosDocumentosTable() }
+function sortTodosDocumentos(key) {
+  const st = tableStateTodos
+  if (st.sortKey === key) st.sortDir = st.sortDir === 'asc' ? 'desc' : 'asc'
+  else { st.sortKey = key; st.sortDir = 'asc' }
+  drawTodosDocumentosTable()
+}
+function goToPageTodosDocumentos(p) { tableStateTodos.page = p; drawTodosDocumentosTable() }
+function setPageSizeTodosDocumentos(n) { tableStateTodos.pageSize = parseInt(n, 10); tableStateTodos.page = 1; drawTodosDocumentosTable() }
+
+let todosSearchDebounce = null
+function searchTodosDocumentos(value) {
+  clearTimeout(todosSearchDebounce)
+  todosSearchDebounce = setTimeout(() => {
+    tableStateTodos.search = value
+    tableStateTodos.page = 1
+    drawTodosDocumentosTable()
+  }, 200)
+}
+
+async function confirmarEliminarDocGlobal(id, url) {
+  openConfirm(
+    '¿Eliminar este documento? El archivo también se borrará del almacenamiento.',
+    async () => {
+      const parts = url.split('/documentos/')
+      if (parts[1]) {
+        await sb.storage.from('documentos').remove([parts[1]])
+      }
+      const { error } = await sb.from('documentos').delete().eq('id', id)
+      if (error) { toast('Error: ' + error.message, 'error'); return }
+      toast('Documento eliminado')
+      renderTodosDocumentos()
+    }
+  )
+}
+
+// ══════════════════════════════════════════
+// BUSCADOR GENERAL (estructuras + documentos)
+// ══════════════════════════════════════════
+async function renderBuscador() {
+  setMain(`
+    <div class="page-header">
+      <div>
+        <h2>Buscador general</h2>
+        <p>Buscá en estructuras y documentos de todo el sistema</p>
+      </div>
+    </div>
+    <div class="table-toolbar">
+      <div class="search-wrap" style="max-width:480px;">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        <input class="search-input" id="buscador-input" placeholder="Buscar por nombre, descripción, tipo..." oninput="ejecutarBusquedaGeneral(this.value)" autofocus>
+      </div>
+    </div>
+    <div id="buscador-results"><div class="empty"><p>Escribí algo para empezar a buscar</p></div></div>
+  `)
+  setTimeout(() => document.getElementById('buscador-input').focus(), 50)
+}
+
+let buscadorDebounce = null
+function ejecutarBusquedaGeneral(value) {
+  clearTimeout(buscadorDebounce)
+  const q = value.trim()
+  if (!q) {
+    document.getElementById('buscador-results').innerHTML = '<div class="empty"><p>Escribí algo para empezar a buscar</p></div>'
+    return
+  }
+  buscadorDebounce = setTimeout(() => buscarGeneral(q), 250)
+}
+
+async function buscarGeneral(q) {
+  const resultsEl = document.getElementById('buscador-results')
+  resultsEl.innerHTML = '<div class="loading">Buscando...</div>'
+
+  const ql = q.toLowerCase()
+
+  const [{ data: estructuras }, { data: documentos }] = await Promise.all([
+    sb.from('estructuras').select('*'),
+    sb.from('documentos').select('*, estructuras(id, nombre)')
+  ])
+
+  const matchEstructuras = (estructuras || []).filter(e =>
+    (e.nombre || '').toLowerCase().includes(ql) || (e.descripcion || '').toLowerCase().includes(ql)
+  )
+  const matchDocumentos = (documentos || []).filter(d =>
+    (d.descripcion || '').toLowerCase().includes(ql) ||
+    d.tipo.toLowerCase().includes(ql) ||
+    (d.estructuras && d.estructuras.nombre || '').toLowerCase().includes(ql)
+  )
+
+  if (matchEstructuras.length === 0 && matchDocumentos.length === 0) {
+    resultsEl.innerHTML = `<div class="empty"><p>No se encontraron resultados para "${esc(q)}"</p></div>`
+    return
+  }
+
+  let html = ''
+
+  if (matchEstructuras.length > 0) {
+    html += `
+      <div class="dash-section">
+        <h3>Estructuras (${matchEstructuras.length})</h3>
+        <div class="table-wrap"><div class="table-scroll"><table class="data-table">
+          <thead><tr><th>Nombre</th><th>Descripción</th><th style="text-align:right;">Acción</th></tr></thead>
+          <tbody>
+            ${matchEstructuras.map(e => `
+              <tr>
+                <td class="cell-name">${esc(e.nombre)}</td>
+                <td class="wrap cell-muted">${esc(e.descripcion || '—')}</td>
+                <td style="text-align:right;"><button class="btn btn-secondary btn-sm" onclick='verDocumentos(${JSON.stringify(e)})'>Ver documentos</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table></div></div>
+      </div>`
+  }
+
+  if (matchDocumentos.length > 0) {
+    html += `
+      <div class="dash-section">
+        <h3>Documentos (${matchDocumentos.length})</h3>
+        <div class="table-wrap"><div class="table-scroll"><table class="data-table">
+          <thead><tr><th>Tipo</th><th>Estructura</th><th>Descripción</th><th>Subido</th><th style="text-align:right;">Acción</th></tr></thead>
+          <tbody>
+            ${matchDocumentos.map(d => `
+              <tr>
+                <td><span class="badge ${d.tipo === 'Cargo' ? 'badge-cargo' : 'badge-descargo'}">${d.tipo}</span></td>
+                <td class="cell-muted">${esc(d.estructuras ? d.estructuras.nombre : '—')}</td>
+                <td class="wrap cell-muted">${esc(d.descripcion || 'Sin descripción')}</td>
+                <td class="cell-muted">${fmtDate(d.created_at)}</td>
+                <td style="text-align:right;"><a href="${d.archivo_url}" target="_blank" class="btn btn-secondary btn-sm">Abrir</a></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table></div></div>
+      </div>`
+  }
+
+  resultsEl.innerHTML = html
 }
 
 // ══════════════════════════════════════════
@@ -724,14 +1599,17 @@ function esc(str) {
 // INIT
 // ══════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
+  initTheme()
+  initSidebarState()
+
   // Verificar sesión activa al cargar
   const { data: { session } } = await sb.auth.getSession()
   if (session) {
     currentUser = session.user
     document.getElementById('nav-email').textContent = currentUser.email
     document.getElementById('login-screen').classList.add('hidden')
-    document.getElementById('app-screen').style.display = 'flex'
-    renderEstructuras()
+    document.getElementById('app-screen').style.display = 'block'
+    navigateTo('dashboard')
   }
 })
 </script>
